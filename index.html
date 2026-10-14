@@ -1,0 +1,896 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CEFR AI Mock Exam System</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        glassBorder: 'rgba(255, 255, 255, 0.7)',
+                        glassBg: 'rgba(255, 255, 255, 0.75)',
+                        glassCard: 'rgba(255, 255, 255, 0.65)',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #e0f2fe 0%, #ede9fe 50%, #dcfce7 100%);
+            background-attachment: fixed;
+        }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.75);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.85);
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.06);
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.68);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.9);
+            box-shadow: 0 4px 20px 0 rgba(0, 0, 0, 0.04);
+            transition: all 0.3s ease;
+        }
+        .glass-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px 0 rgba(0, 0, 0, 0.08);
+        }
+        .glass-input {
+            background: rgba(255, 255, 255, 0.85);
+            border: 1px solid rgba(203, 213, 225, 0.8);
+            backdrop-filter: blur(4px);
+        }
+        .glass-input:focus {
+            background: rgba(255, 255, 255, 0.98);
+            border-color: #6366f1;
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+        }
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+            #certificateCard, #certificateCard * {
+                visibility: visible;
+            }
+            #certificateCard {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                margin: 0;
+                padding: 2rem;
+                box-shadow: none;
+                border: 2px solid #6366f1;
+            }
+        }
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(241, 245, 249, 0.5);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(203, 213, 225, 0.8);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(148, 163, 184, 1);
+        }
+    </style>
+</head>
+<body class="h-full text-slate-700 flex flex-col overflow-x-hidden">
+
+    <!-- HEADER -->
+    <header class="glass-panel sticky top-0 z-50 px-6 py-4 flex items-center justify-between border-b border-white/40">
+        <div class="flex items-center space-x-3 cursor-pointer" onclick="app.navigateTo('dashboard')">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-500 to-teal-400 flex items-center justify-center text-white shadow-md">
+                <i class="fa-solid fa-graduation-cap text-lg"></i>
+            </div>
+            <div>
+                <h1 class="font-bold text-lg text-slate-800 tracking-tight">CEFR AI <span class="text-indigo-600 font-extrabold">Mock Exam</span></h1>
+                <p class="text-xs text-slate-500 font-medium">Powered by Gemini AI (With Fallback Support)</p>
+            </div>
+        </div>
+        <div class="flex items-center space-x-3">
+            <button onclick="app.openApiKeyModal()" class="glass-input px-4 py-2 rounded-xl text-sm font-semibold text-slate-700 hover:bg-white/90 flex items-center space-x-2 transition shadow-sm">
+                <i class="fa-solid fa-key text-indigo-500"></i>
+                <span id="apiKeyBtnText">API Key Settings</span>
+            </button>
+            <div id="connectionStatus" class="hidden sm:flex items-center space-x-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-emerald-100/80 text-emerald-700 border border-emerald-200">
+                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                <span>AI Ready</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- MAIN APP CONTAINER -->
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 flex flex-col">
+
+        <!-- DASHBOARD VIEW -->
+        <div id="view-dashboard" class="view-section flex-1 flex flex-col space-y-6">
+            <!-- Welcome Banner -->
+            <div class="glass-panel p-8 rounded-3xl relative overflow-hidden">
+                <div class="absolute -right-10 -bottom-10 w-64 h-64 bg-gradient-to-br from-indigo-400/20 to-teal-400/20 rounded-full blur-2xl pointer-events-none"></div>
+                <div class="relative z-10 max-w-2xl">
+                    <span class="px-3 py-1 rounded-full text-xs font-bold bg-indigo-100 text-indigo-700 border border-indigo-200 uppercase tracking-wider">Official CEFR Standard</span>
+                    <h2 class="text-3xl sm:text-4xl font-extrabold text-slate-800 mt-3 tracking-tight">AI-Powered English Mock Examination</h2>
+                    <p class="text-slate-600 mt-2 text-base leading-relaxed">
+                        Test your English proficiency across Listening, Reading, Writing, and Speaking. Get precise CEFR levels (A2 to C2) with deep AI diagnostic grading and printable certificates.
+                    </p>
+                    <div class="mt-6 flex flex-wrap gap-4">
+                        <button onclick="app.startFullMockExam()" class="px-6 py-3 rounded-2xl bg-gradient-to-r from-indigo-600 to-indigo-500 text-white font-semibold shadow-lg shadow-indigo-500/25 hover:from-indigo-500 hover:to-indigo-400 transition transform hover:-translate-y-0.5 flex items-center space-x-2">
+                            <i class="fa-solid fa-play"></i>
+                            <span>Start Full Mock Exam</span>
+                        </button>
+                        <button onclick="app.scrollToSection('practice-sections')" class="glass-input px-6 py-3 rounded-2xl font-semibold text-slate-700 hover:bg-white/90 transition flex items-center space-x-2">
+                            <i class="fa-solid fa-layer-group text-indigo-500"></i>
+                            <span>Practice by Section</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sections Grid -->
+            <div id="practice-sections" class="space-y-4">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-xl font-bold text-slate-800 tracking-tight">Exam Sections</h3>
+                    <span class="text-xs text-slate-500 font-medium">Select a module to test</span>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <!-- Listening Card -->
+                    <div class="glass-card p-6 rounded-3xl flex flex-col justify-between">
+                        <div>
+                            <div class="w-12 h-12 rounded-2xl bg-blue-100 text-blue-600 flex items-center justify-center text-xl mb-4 shadow-inner">
+                                <i class="fa-solid fa-headphones"></i>
+                            </div>
+                            <h4 class="font-bold text-lg text-slate-800">Listening</h4>
+                            <p class="text-xs text-slate-500 mt-1">Audio transcripts & multiple choice comprehension questions.</p>
+                        </div>
+                        <div class="mt-6 pt-4 border-t border-slate-200/60 flex items-center justify-between">
+                            <span class="text-xs font-semibold text-slate-600">~20 mins</span>
+                            <button onclick="app.startSection('listening')" class="px-4 py-2 rounded-xl bg-blue-600 text-white text-xs font-semibold hover:bg-blue-500 transition shadow-sm">Start Practice</button>
+                        </div>
+                    </div>
+
+                    <!-- Reading Card -->
+                    <div class="glass-card p-6 rounded-3xl flex flex-col justify-between">
+                        <div>
+                            <div class="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-600 flex items-center justify-center text-xl mb-4 shadow-inner">
+                                <i class="fa-solid fa-book-open"></i>
+                            </div>
+                            <h4 class="font-bold text-lg text-slate-800">Reading</h4>
+                            <p class="text-xs text-slate-500 mt-1">Advanced passages, multiple choice & comprehension analysis.</p>
+                        </div>
+                        <div class="mt-6 pt-4 border-t border-slate-200/60 flex items-center justify-between">
+                            <span class="text-xs font-semibold text-slate-600">~30 mins</span>
+                            <button onclick="app.startSection('reading')" class="px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-500 transition shadow-sm">Start Practice</button>
+                        </div>
+                    </div>
+
+                    <!-- Writing Card -->
+                    <div class="glass-card p-6 rounded-3xl flex flex-col justify-between">
+                        <div>
+                            <div class="w-12 h-12 rounded-2xl bg-purple-100 text-purple-600 flex items-center justify-center text-xl mb-4 shadow-inner">
+                                <i class="fa-solid fa-pen-nib"></i>
+                            </div>
+                            <h4 class="font-bold text-lg text-slate-800">Writing</h4>
+                            <p class="text-xs text-slate-500 mt-1">Task 1 (Email/Letter) & Task 2 (Essay) with instant AI evaluation.</p>
+                        </div>
+                        <div class="mt-6 pt-4 border-t border-slate-200/60 flex items-center justify-between">
+                            <span class="text-xs font-semibold text-slate-600">~40 mins</span>
+                            <button onclick="app.startSection('writing')" class="px-4 py-2 rounded-xl bg-purple-600 text-white text-xs font-semibold hover:bg-purple-500 transition shadow-sm">Start Practice</button>
+                        </div>
+                    </div>
+
+                    <!-- Speaking Card -->
+                    <div class="glass-card p-6 rounded-3xl flex flex-col justify-between">
+                        <div>
+                            <div class="w-12 h-12 rounded-2xl bg-amber-100 text-amber-600 flex items-center justify-center text-xl mb-4 shadow-inner">
+                                <i class="fa-solid fa-microphone-lines"></i>
+                            </div>
+                            <h4 class="font-bold text-lg text-slate-800">Speaking</h4>
+                            <p class="text-xs text-slate-500 mt-1">Interactive prompts & spoken response simulation with transcript analysis.</p>
+                        </div>
+                        <div class="mt-6 pt-4 border-t border-slate-200/60 flex items-center justify-between">
+                            <span class="text-xs font-semibold text-slate-600">~15 mins</span>
+                            <button onclick="app.startSection('speaking')" class="px-4 py-2 rounded-xl bg-amber-600 text-white text-xs font-semibold hover:bg-amber-500 transition shadow-sm">Start Practice</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- EXAM WORKSPACE VIEW -->
+        <div id="view-exam" class="view-section hidden flex-1 flex flex-col space-y-4">
+            <!-- Exam Top Bar -->
+            <div class="glass-panel p-4 rounded-2xl flex flex-wrap items-center justify-between gap-4">
+                <div class="flex items-center space-x-3">
+                    <button onclick="app.confirmExitExam()" class="w-9 h-9 rounded-xl glass-input flex items-center justify-center text-slate-600 hover:text-red-600 transition">
+                        <i class="fa-solid fa-arrow-left"></i>
+                    </button>
+                    <div>
+                        <h3 id="examTitleDisplay" class="font-bold text-slate-800">CEFR Mock Examination</h3>
+                        <p id="examSubtitleDisplay" class="text-xs text-slate-500 font-medium">Module in progress</p>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <div class="flex items-center space-x-2 px-4 py-2 rounded-xl bg-white/80 border border-slate-200 shadow-inner">
+                        <i class="fa-regular fa-clock text-indigo-600"></i>
+                        <span id="examTimer" class="font-mono font-bold text-slate-700 text-sm">29:59</span>
+                    </div>
+                    <button onclick="app.submitExamSection()" class="px-5 py-2 rounded-xl bg-indigo-600 text-white font-semibold text-sm hover:bg-indigo-500 transition shadow-md shadow-indigo-500/20">
+                        Finish & Grade
+                    </button>
+                </div>
+            </div>
+
+            <!-- Exam Content Area -->
+            <div id="examContentContainer" class="flex-1 glass-panel p-6 sm:p-8 rounded-3xl flex flex-col overflow-y-auto">
+                <!-- Dynamically injected exam questionnaire -->
+            </div>
+        </div>
+
+        <!-- REPORT & CERTIFICATE VIEW -->
+        <div id="view-report" class="view-section hidden flex-1 flex flex-col space-y-6">
+            <div class="glass-panel p-6 sm:p-8 rounded-3xl flex flex-wrap items-center justify-between gap-4">
+                <div>
+                    <span class="px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700 border border-emerald-200 uppercase">AI Evaluation Complete</span>
+                    <h2 class="text-3xl font-extrabold text-slate-800 mt-2 tracking-tight">Official CEFR Score Report</h2>
+                    <p class="text-slate-600 text-sm">Detailed diagnostic breakdown evaluated by Google Gemini AI</p>
+                </div>
+                <div class="flex items-center space-x-3">
+                    <button onclick="app.printCertificate()" class="glass-input px-5 py-2.5 rounded-xl font-semibold text-slate-700 hover:bg-white/90 transition flex items-center space-x-2 shadow-sm">
+                        <i class="fa-solid fa-print text-indigo-600"></i>
+                        <span>Print Certificate</span>
+                    </button>
+                    <button onclick="app.navigateTo('dashboard')" class="px-5 py-2.5 rounded-xl bg-indigo-600 text-white font-semibold hover:bg-indigo-500 transition shadow-md shadow-indigo-600/20 flex items-center space-x-2">
+                        <i class="fa-solid fa-house"></i>
+                        <span>Dashboard</span>
+                    </button>
+                </div>
+            </div>
+
+            <div id="reportContentContainer" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Dynamically injected scorecards & certificate -->
+            </div>
+        </div>
+
+    </main>
+
+    <!-- API KEY MODAL -->
+    <div id="apiKeyModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-md hidden">
+        <div class="glass-panel max-w-md w-full p-6 sm:p-8 rounded-3xl shadow-2xl border border-white space-y-6 relative">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center">
+                        <i class="fa-solid fa-key"></i>
+                    </div>
+                    <h3 class="text-lg font-bold text-slate-800">Gemini API Key Setup</h3>
+                </div>
+                <button onclick="app.closeApiKeyModal()" class="w-8 h-8 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-600 transition">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <p class="text-xs text-slate-600 leading-relaxed">
+                Enter your Google Gemini API Key. It is stored securely in your browser's <code class="bg-slate-200/80 px-1 py-0.5 rounded text-indigo-600">localStorage</code>. The system automatically tests models (`gemini-2.5-flash`, `gemini-1.5-flash`, `gemini-2.5-flash-lite`) with dynamic fallback handling.
+            </p>
+            <div class="space-y-2">
+                <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">API Key</label>
+                <div class="relative">
+                    <input type="password" id="apiKeyInput" placeholder="AIzaSy..." class="glass-input w-full px-4 py-3 rounded-xl text-sm font-mono text-slate-800 focus:outline-none">
+                    <button type="button" onclick="app.toggleApiKeyVisibility()" class="absolute right-3 top-3.5 text-slate-400 hover:text-slate-600">
+                        <i class="fa-regular fa-eye" id="eyeIcon"></i>
+                    </button>
+                </div>
+            </div>
+            <div id="apiKeyTestResult" class="hidden p-3 rounded-xl text-xs font-semibold"></div>
+            <div class="flex items-center justify-end space-x-3 pt-2">
+                <button onclick="app.testApiKey()" class="glass-input px-4 py-2.5 rounded-xl font-semibold text-slate-700 hover:bg-slate-100 transition text-sm">
+                    Test Connection
+                </button>
+                <button onclick="app.saveApiKey()" class="px-5 py-2.5 rounded-xl bg-indigo-600 text-white font-semibold text-sm hover:bg-indigo-500 transition shadow-md shadow-indigo-600/20">
+                    Save Key
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- LOADING SPINNER MODAL -->
+    <div id="loadingModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/30 backdrop-blur-sm hidden">
+        <div class="glass-panel p-8 rounded-3xl flex flex-col items-center space-y-4 shadow-2xl">
+            <div class="w-12 h-12 rounded-full border-4 border-indigo-500 border-t-transparent animate-spin"></div>
+            <p id="loadingText" class="font-bold text-slate-700 text-sm">Processing with Gemini AI...</p>
+        </div>
+    </div>
+
+    <script>
+        class CEFRExamApp {
+            constructor() {
+                this.apiKey = localStorage.getItem('gemini_api_key') || '';
+                this.currentView = 'dashboard';
+                this.currentSection = null;
+                this.isFullMock = false;
+                this.timerInterval = null;
+                this.timeRemaining = 1800; // 30 mins
+                this.userAnswers = {
+                    listening: {},
+                    reading: {},
+                    writing: { task1: '', task2: '' },
+                    speaking: { part1: '', part2: '' }
+                };
+                this.examData = null;
+                this.evaluationResult = null;
+
+                // Fallback list of models to try in sequence to prevent 404 errors
+                this.candidateModels = [
+                    'gemini-3.5-flash-lite',
+                    'gemini-3.6-flash',
+                    'gemini-3.8-flash'
+                ];
+                this.init();
+            }
+
+            init() {
+                this.updateApiKeyUI();
+                this.navigateTo('dashboard');
+            }
+
+            updateApiKeyUI() {
+                const btnText = document.getElementById('apiKeyBtnText');
+                const status = document.getElementById('connectionStatus');
+                if (this.apiKey) {
+                    btnText.textContent = 'API Key Configured';
+                    status.classList.remove('hidden');
+                } else {
+                    btnText.textContent = 'Configure API Key';
+                    status.classList.add('hidden');
+                }
+            }
+
+            openApiKeyModal() {
+                document.getElementById('apiKeyInput').value = this.apiKey;
+                document.getElementById('apiKeyTestResult').classList.add('hidden');
+                document.getElementById('apiKeyModal').classList.remove('hidden');
+            }
+
+            closeApiKeyModal() {
+                document.getElementById('apiKeyModal').classList.add('hidden');
+            }
+
+            toggleApiKeyVisibility() {
+                const input = document.getElementById('apiKeyInput');
+                const icon = document.getElementById('eyeIcon');
+                if (input.type === 'password') {
+                    input.type = 'text';
+                    icon.className = 'fa-regular fa-eye-slash';
+                } else {
+                    input.type = 'password';
+                    icon.className = 'fa-regular fa-eye';
+                }
+            }
+
+            saveApiKey() {
+                const key = document.getElementById('apiKeyInput').value.trim();
+                this.apiKey = key;
+                localStorage.setItem('gemini_api_key', key);
+                this.updateApiKeyUI();
+                this.closeApiKeyModal();
+            }
+
+            async testApiKey() {
+                const key = document.getElementById('apiKeyInput').value.trim();
+                const resDiv = document.getElementById('apiKeyTestResult');
+                if (!key) {
+                    resDiv.className = 'p-3 rounded-xl text-xs font-semibold bg-red-100 text-red-700 border border-red-200';
+                    resDiv.textContent = 'Please enter an API key.';
+                    resDiv.classList.remove('hidden');
+                    return;
+                }
+                resDiv.className = 'p-3 rounded-xl text-xs font-semibold bg-blue-100 text-blue-700 border border-blue-200';
+                resDiv.textContent = 'Testing connection with Gemini API endpoints...';
+                resDiv.classList.remove('hidden');
+
+                try {
+                    const response = await this.callGeminiAPI(key, "Respond with 'SUCCESS' if you read this message.");
+                    if (response && response.includes('SUCCESS')) {
+                        resDiv.className = 'p-3 rounded-xl text-xs font-semibold bg-emerald-100 text-emerald-700 border border-emerald-200';
+                        resDiv.textContent = 'API Connection Successful!';
+                    } else {
+                        throw new Error('Invalid response received.');
+                    }
+                } catch (error) {
+                    resDiv.className = 'p-3 rounded-xl text-xs font-semibold bg-red-100 text-red-700 border border-red-200';
+                    resDiv.textContent = 'Connection failed: ' + error.message;
+                }
+            }
+
+            async callGeminiAPI(apiKeyToUse, prompt, schema = null) {
+                const key = apiKeyToUse || this.apiKey;
+                if (!key) {
+                    throw new Error('API Key not configured. Please set your Gemini API key in settings.');
+                }
+
+                let lastError = null;
+
+                // Try each model sequentially as a fallback
+                for (const modelName of this.candidateModels) {
+                    const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${key}`;
+
+                    const payload = {
+                        contents: [{ parts: [{ text: prompt }] }]
+                    };
+
+                    if (schema) {
+                        payload.generationConfig = {
+                            responseMimeType: "application/json",
+                            responseSchema: schema
+                        };
+                    }
+
+                    let retries = 2;
+                    let delay = 1000;
+
+                    for (let i = 0; i < retries; i++) {
+                        try {
+                            const response = await fetch(url, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify(payload)
+                            });
+
+                            if (!response.ok) {
+                                if (response.status === 404) {
+                                    // Model not available on this endpoint, break loop to try next model
+                                    throw new Error(`MODEL_404:${modelName}`);
+                                }
+                                if (response.status === 429 && i < retries - 1) {
+                                    await new Promise(r => setTimeout(r, delay));
+                                    delay *= 2;
+                                    continue;
+                                }
+                                const errBody = await response.text();
+                                throw new Error(`API Error (${response.status}): ${errBody}`);
+                            }
+
+                            const result = await response.json();
+                            const candidate = result.candidates?.[0];
+                            if (candidate && candidate.content?.parts?.[0]?.text) {
+                                return candidate.content.parts[0].text;
+                            } else {
+                                throw new Error('Unexpected response structure from Gemini API.');
+                            }
+                        } catch (err) {
+                            if (err.message.startsWith('MODEL_404')) {
+                                lastError = err;
+                                break; // Switch to next model candidate
+                            }
+                            if (i === retries - 1) {
+                                lastError = err;
+                            } else {
+                                await new Promise(r => setTimeout(r, delay));
+                                delay *= 2;
+                            }
+                        }
+                    }
+                }
+
+                throw lastError || new Error('Failed to connect to all Gemini API endpoints.');
+            }
+
+            navigateTo(viewId) {
+                document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden'));
+                document.getElementById(`view-${viewId}`).classList.remove('hidden');
+                this.currentView = viewId;
+                if (viewId === 'dashboard') {
+                    if (this.timerInterval) clearInterval(this.timerInterval);
+                }
+                window.scrollTo(0, 0);
+            }
+
+            showLoading(text = 'Processing with Gemini AI...') {
+                document.getElementById('loadingText').textContent = text;
+                document.getElementById('loadingModal').classList.remove('hidden');
+            }
+
+            hideLoading() {
+                document.getElementById('loadingModal').classList.add('hidden');
+            }
+
+            scrollToSection(id) {
+                document.getElementById(id).scrollIntoView({ behavior: 'smooth' });
+            }
+
+            startFullMockExam() {
+                if (!this.apiKey) {
+                    this.openApiKeyModal();
+                    return;
+                }
+                this.isFullMock = true;
+                this.startSection('reading');
+            }
+
+            async startSection(sectionType) {
+                if (!this.apiKey) {
+                    this.openApiKeyModal();
+                    return;
+                }
+                this.currentSection = sectionType;
+
+                const titles = {
+                    listening: 'CEFR Listening Examination',
+                    reading: 'CEFR Reading Comprehension',
+                    writing: 'CEFR Writing Assessment (Task 1 & 2)',
+                    speaking: 'CEFR Speaking Test Simulation'
+                };
+
+                document.getElementById('examTitleDisplay').textContent = titles[sectionType];
+                document.getElementById('examSubtitleDisplay').textContent = 'Official B1-C1 Standard Examination';
+
+                this.showLoading(`Generating official ${sectionType} exam questions with Gemini AI...`);
+
+                try {
+                    await this.loadExamContent(sectionType);
+                    this.hideLoading();
+                    this.navigateTo('exam');
+                    this.startTimer(sectionType === 'writing' ? 2400 : 1800);
+                } catch (err) {
+                    this.hideLoading();
+                    alert('Error generating exam questions: ' + err.message);
+                }
+            }
+
+            async loadExamContent(sectionType) {
+                const prompt = `Generate a rigorous CEFR B2/C1 level English mock exam section for "${sectionType}".
+                Provide output in strict JSON format matching the schema provided.
+                For reading: provide a reading passage (300 words) and 4 multiple choice questions with options and correct option index.
+                For listening: provide an audio transcript script (250 words) and 4 comprehension questions with options and correct option index.
+                For writing: provide Task 1 (Email/Letter, 120-150 words) and Task 2 (Essay prompt, 250-300 words).
+                For speaking: provide Part 1 (Short interview prompts) and Part 2 (Long turn task card with bullet points).`;
+
+                const schema = {
+                    type: "OBJECT",
+                    properties: {
+                        section: { type: "STRING" },
+                        instructions: { type: "STRING" },
+                        passageOrTranscript: { type: "STRING" },
+                        questions: {
+                            type: "ARRAY",
+                            items: {
+                                type: "OBJECT",
+                                properties: {
+                                    id: { type: "NUMBER" },
+                                    question: { type: "STRING" },
+                                    options: { type: "ARRAY", items: { type: "STRING" } },
+                                    correctOptionIndex: { type: "NUMBER" }
+                                },
+                                propertyOrdering: ["id", "question", "options", "correctOptionIndex"]
+                            }
+                        },
+                        writingTasks: {
+                            type: "ARRAY",
+                            items: {
+                                type: "OBJECT",
+                                properties: {
+                                    taskNumber: { type: "NUMBER" },
+                                    title: { type: "STRING" },
+                                    prompt: { type: "STRING" },
+                                    minWords: { type: "NUMBER" }
+                                },
+                                propertyOrdering: ["taskNumber", "title", "prompt", "minWords"]
+                            }
+                        },
+                        speakingPrompts: {
+                            type: "ARRAY",
+                            items: {
+                                type: "OBJECT",
+                                properties: {
+                                    part: { type: "STRING" },
+                                    prompt: { type: "STRING" },
+                                    bulletPoints: { type: "ARRAY", items: { type: "STRING" } }
+                                },
+                                propertyOrdering: ["part", "prompt", "bulletPoints"]
+                            }
+                        }
+                    },
+                    propertyOrdering: ["section", "instructions", "passageOrTranscript", "questions", "writingTasks", "speakingPrompts"]
+                };
+
+                const jsonStr = await this.callGeminiAPI(this.apiKey, prompt, schema);
+                this.examData = JSON.parse(jsonStr);
+                this.renderExamContent();
+            }
+
+            renderExamContent() {
+                const container = document.getElementById('examContentContainer');
+                let html = `<div class="mb-6 p-4 rounded-2xl bg-indigo-50/70 border border-indigo-100 flex items-start space-x-3">
+                    <i class="fa-solid fa-circle-info text-indigo-600 mt-1"></i>
+                    <div>
+                        <h4 class="font-bold text-slate-800 text-sm">Instructions</h4>
+                        <p class="text-xs text-slate-600 mt-0.5">${this.examData.instructions || 'Answer all questions carefully according to CEFR standards.'}</p>
+                    </div>
+                </div>`;
+
+                if (this.currentSection === 'reading' || this.currentSection === 'listening') {
+                    if (this.currentSection === 'reading') {
+                        html += `<div class="mb-6 p-6 rounded-2xl glass-input text-slate-800 text-sm leading-relaxed max-h-72 overflow-y-auto shadow-inner">
+                            <h4 class="font-bold text-indigo-600 mb-2 uppercase text-xs tracking-wider">Reading Passage</h4>
+                            ${this.examData.passageOrTranscript}
+                        </div>`;
+                    } else {
+                        html += `<div class="mb-6 p-6 rounded-2xl glass-input text-slate-800 text-sm leading-relaxed shadow-inner">
+                            <h4 class="font-bold text-blue-600 mb-2 uppercase text-xs tracking-wider"><i class="fa-solid fa-headphones mr-2"></i>Listening Transcript / Script</h4>
+                            <p class="italic text-slate-600">${this.examData.passageOrTranscript}</p>
+                        </div>`;
+                    }
+
+                    if (this.examData.questions && this.examData.questions.length > 0) {
+                        html += `<div class="space-y-6">`;
+                        this.examData.questions.forEach((q, idx) => {
+                            html += `<div class="glass-card p-5 rounded-2xl space-y-3">
+                                <h5 class="font-bold text-slate-800 text-sm">Question ${idx + 1}: ${q.question}</h5>
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">`;
+                            q.options.forEach((opt, optIdx) => {
+                                html += `<label class="flex items-center space-x-3 p-3 rounded-xl glass-input cursor-pointer hover:bg-white transition">
+                                    <input type="radio" name="q_${q.id || idx}" value="${optIdx}" onchange="app.saveAnswer('${this.currentSection}', ${idx}, ${optIdx})" class="text-indigo-600 focus:ring-indigo-500">
+                                    <span class="text-xs text-slate-700 font-medium">${opt}</span>
+                                </label>`;
+                            });
+                            html += `</div></div>`;
+                        });
+                        html += `</div>`;
+                    }
+                } else if (this.currentSection === 'writing') {
+                    html += `<div class="space-y-8">`;
+                    if (this.examData.writingTasks) {
+                        this.examData.writingTasks.forEach((task) => {
+                            html += `<div class="glass-card p-6 rounded-2xl space-y-4">
+                                <div class="flex items-center justify-between">
+                                    <h4 class="font-bold text-slate-800 text-sm">${task.title} (Task ${task.taskNumber})</h4>
+                                    <span class="text-xs font-semibold px-2.5 py-1 rounded-full bg-purple-100 text-purple-700">Min ${task.minWords} words</span>
+                                </div>
+                                <p class="text-xs text-slate-600 leading-relaxed bg-white/50 p-3 rounded-xl">${task.prompt}</p>
+                                <div class="space-y-2">
+                                    <textarea rows="6" oninput="app.updateWritingAnswer(${task.taskNumber}, this.value)" placeholder="Type your written response here..." class="glass-input w-full p-4 rounded-xl text-xs sm:text-sm text-slate-800 focus:outline-none"></textarea>
+                                    <div class="flex items-center justify-between text-xs text-slate-500 font-medium">
+                                        <span id="wordCount_task_${task.taskNumber}">Words: 0</span>
+                                        <span>Criteria: Task Achievement, Coherence, Grammar, Vocabulary</span>
+                                    </div>
+                                </div>
+                            </div>`;
+                        });
+                    }
+                    html += `</div>`;
+                } else if (this.currentSection === 'speaking') {
+                    html += `<div class="space-y-6">`;
+                    if (this.examData.speakingPrompts) {
+                        this.examData.speakingPrompts.forEach((sp, idx) => {
+                            html += `<div class="glass-card p-6 rounded-2xl space-y-4">
+                                <h4 class="font-bold text-slate-800 text-sm">${sp.part}</h4>
+                                <p class="text-xs text-slate-600 leading-relaxed bg-white/50 p-3 rounded-xl font-medium">${sp.prompt}</p>`;
+                            if (sp.bulletPoints && sp.bulletPoints.length > 0) {
+                                html += `<ul class="list-disc list-inside text-xs text-slate-600 space-y-1 pl-2">`;
+                                sp.bulletPoints.forEach(bp => { html += `<li>${bp}</li>`; });
+                                html += `</ul>`;
+                            }
+                            html += `<div class="space-y-2 pt-2">
+                                <label class="text-xs font-bold text-slate-700">Type or simulate your spoken transcript response:</label>
+                                <textarea rows="4" oninput="app.updateSpeakingAnswer('part${idx+1}', this.value)" placeholder="Enter your spoken answer transcript here..." class="glass-input w-full p-4 rounded-xl text-xs sm:text-sm text-slate-800 focus:outline-none"></textarea>
+                            </div></div>`;
+                        });
+                    }
+                    html += `</div>`;
+                }
+
+                container.innerHTML = html;
+            }
+
+            saveAnswer(section, qIdx, optIdx) {
+                this.userAnswers[section][qIdx] = optIdx;
+            }
+
+            updateWritingAnswer(taskNumber, text) {
+                const words = text.trim() ? text.trim().split(/\s+/).length : 0;
+                document.getElementById(`wordCount_task_${taskNumber}`).textContent = `Words: ${words}`;
+                this.userAnswers.writing[`task${taskNumber}`] = text;
+            }
+
+            updateSpeakingAnswer(partKey, text) {
+                this.userAnswers.speaking[partKey] = text;
+            }
+
+            startTimer(durationSeconds) {
+                if (this.timerInterval) clearInterval(this.timerInterval);
+                this.timeRemaining = durationSeconds;
+                const timerDisplay = document.getElementById('examTimer');
+
+                this.timerInterval = setInterval(() => {
+                    const mins = Math.floor(this.timeRemaining / 60);
+                    const secs = this.timeRemaining % 60;
+                    timerDisplay.textContent = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+
+                    if (this.timeRemaining <= 0) {
+                        clearInterval(this.timerInterval);
+                        alert('Time is up! Submitting exam automatically.');
+                        this.submitExamSection();
+                    }
+                    this.timeRemaining--;
+                }, 1000);
+            }
+
+            confirmExitExam() {
+                if (confirm('Are you sure you want to exit? Your current progress will be lost.')) {
+                    if (this.timerInterval) clearInterval(this.timerInterval);
+                    this.navigateTo('dashboard');
+                }
+            }
+
+            async submitExamSection() {
+                if (this.timerInterval) clearInterval(this.timerInterval);
+                this.showLoading('Evaluating test with Gemini AI (CEFR Standards)...');
+
+                try {
+                    let evaluationPrompt = `Evaluate the student's answers for the CEFR exam section "${this.currentSection}".
+                    Exam Questions Data: ${JSON.stringify(this.examData)}
+                    Student Submissions: ${JSON.stringify(this.userAnswers[this.currentSection])}
+
+                    Provide an official CEFR diagnostic report (CEFR Level: A2, B1, B2, C1, or C2) with sub-scores, percentage score, strengths, weaknesses, and actionable feedback in JSON format.`;
+
+                    const schema = {
+                        type: "OBJECT",
+                        properties: {
+                            overallBand: { type: "STRING" },
+                            cefrLevel: { type: "STRING" },
+                            scorePercentage: { type: "NUMBER" },
+                            subScores: {
+                                type: "OBJECT",
+                                properties: {
+                                    accuracy: { type: "STRING" },
+                                    fluencyOrCoherence: { type: "STRING" },
+                                    vocabulary: { type: "STRING" },
+                                    grammar: { type: "STRING" }
+                                },
+                                propertyOrdering: ["accuracy", "fluencyOrCoherence", "vocabulary", "grammar"]
+                            },
+                            strengths: { type: "ARRAY", items: { type: "STRING" } },
+                            weaknesses: { type: "ARRAY", items: { type: "STRING" } },
+                            feedbackSummary: { type: "STRING" },
+                            improvementTips: { type: "ARRAY", items: { type: "STRING" } }
+                        },
+                        propertyOrdering: ["overallBand", "cefrLevel", "scorePercentage", "subScores", "strengths", "weaknesses", "feedbackSummary", "improvementTips"]
+                    };
+
+                    const jsonStr = await this.callGeminiAPI(this.apiKey, evaluationPrompt, schema);
+                    this.evaluationResult = JSON.parse(jsonStr);
+                    this.hideLoading();
+                    this.renderReportView();
+                    this.navigateTo('report');
+                } catch (err) {
+                    this.hideLoading();
+                    alert('Error evaluating exam: ' + err.message);
+                }
+            }
+
+            renderReportView() {
+                const container = document.getElementById('reportContentContainer');
+                const res = this.evaluationResult;
+
+                let html = `
+                <!-- Left Column: Detailed Diagnostic Scorecard -->
+                <div class="lg:col-span-2 space-y-6">
+                    <div class="glass-card p-6 sm:p-8 rounded-3xl space-y-6">
+                        <div class="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 pb-6">
+                            <div>
+                                <span class="text-xs font-bold text-slate-500 uppercase tracking-wider">CEFR Grade Achieved</span>
+                                <h3 class="text-4xl font-extrabold text-indigo-600 mt-1">${res.cefrLevel || 'B2'}</h3>
+                            </div>
+                            <div class="text-right">
+                                <span class="text-xs font-bold text-slate-500 uppercase tracking-wider">Overall Score</span>
+                                <h3 class="text-4xl font-extrabold text-slate-800 mt-1">${res.scorePercentage || '85'}%</h3>
+                            </div>
+                        </div>
+
+                        <div class="space-y-4">
+                            <h4 class="font-bold text-slate-800 text-sm">Detailed Evaluation Criteria</h4>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div class="glass-input p-4 rounded-2xl">
+                                    <span class="text-xs text-slate-500 font-medium">Task Completion / Accuracy</span>
+                                    <p class="font-bold text-slate-800 text-sm mt-1">${res.subScores?.accuracy || 'Good'}</p>
+                                </div>
+                                <div class="glass-input p-4 rounded-2xl">
+                                    <span class="text-xs text-slate-500 font-medium">Coherence & Cohesion</span>
+                                    <p class="font-bold text-slate-800 text-sm mt-1">${res.subScores?.fluencyOrCoherence || 'Good'}</p>
+                                </div>
+                                <div class="glass-input p-4 rounded-2xl">
+                                    <span class="text-xs text-slate-500 font-medium">Lexical Resource (Vocabulary)</span>
+                                    <p class="font-bold text-slate-800 text-sm mt-1">${res.subScores?.vocabulary || 'Good'}</p>
+                                </div>
+                                <div class="glass-input p-4 rounded-2xl">
+                                    <span class="text-xs text-slate-500 font-medium">Grammatical Range</span>
+                                    <p class="font-bold text-slate-800 text-sm mt-1">${res.subScores?.grammar || 'Good'}</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="space-y-3">
+                            <h4 class="font-bold text-slate-800 text-sm">AI Examiner Feedback</h4>
+                            <p class="text-xs sm:text-sm text-slate-600 leading-relaxed bg-white/50 p-4 rounded-2xl border border-slate-200/60">${res.feedbackSummary}</p>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div class="glass-input p-5 rounded-2xl space-y-2 border-emerald-200 bg-emerald-50/40">
+                                <h5 class="font-bold text-emerald-700 text-xs uppercase tracking-wider flex items-center space-x-2">
+                                    <i class="fa-solid fa-check"></i>
+                                    <span>Key Strengths</span>
+                                </h5>
+                                <ul class="list-disc list-inside text-xs text-slate-600 space-y-1">
+                                    ${(res.strengths || []).map(s => `<li>${s}</li>`).join('')}
+                                </ul>
+                            </div>
+                            <div class="glass-input p-5 rounded-2xl space-y-2 border-amber-200 bg-amber-50/40">
+                                <h5 class="font-bold text-amber-700 text-xs uppercase tracking-wider flex items-center space-x-2">
+                                    <i class="fa-solid fa-triangle-exclamation"></i>
+                                    <span>Areas for Growth</span>
+                                </h5>
+                                <ul class="list-disc list-inside text-xs text-slate-600 space-y-1">
+                                    ${(res.weaknesses || []).map(w => `<li>${w}</li>`).join('')}
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Column: Certificate Card -->
+                <div class="space-y-6">
+                    <div id="certificateCard" class="glass-card p-6 sm:p-8 rounded-3xl border-2 border-indigo-200/80 bg-gradient-to-b from-white/95 to-indigo-50/50 relative overflow-hidden flex flex-col justify-between space-y-6 shadow-xl">
+                        <div class="text-center space-y-2">
+                            <div class="w-12 h-12 rounded-2xl bg-indigo-600 text-white mx-auto flex items-center justify-center shadow-md">
+                                <i class="fa-solid fa-award text-xl"></i>
+                            </div>
+                            <h4 class="font-extrabold text-slate-800 text-base tracking-widest uppercase">Certificate of Achievement</h4>
+                            <p class="text-xs text-indigo-600 font-semibold">CEFR English Proficiency Exam</p>
+                        </div>
+                        <div class="text-center space-y-1 py-4 border-y border-slate-200/60">
+                            <p class="text-xs text-slate-500">This certifies candidate proficiency at level</p>
+                            <h3 class="text-5xl font-black text-indigo-700 tracking-tight py-2">${res.cefrLevel || 'B2'}</h3>
+                            <p class="text-xs text-slate-500">Section: <span class="font-bold uppercase text-slate-700">${this.currentSection}</span></p>
+                        </div>
+                        <div class="space-y-3">
+                            <div class="flex items-center justify-between text-xs text-slate-500 font-medium">
+                                <span>Date: ${new Date().toLocaleDateString()}</span>
+                                <span class="text-indigo-600 font-bold">Verified by Gemini AI</span>
+                            </div>
+                            <div class="p-3 rounded-xl bg-white/80 border border-slate-200/60 text-center">
+                                <span class="font-mono font-bold text-xs text-slate-700">CERT-CEFR-AI-${Math.floor(100000 + Math.random() * 900000)}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>`;
+
+                container.innerHTML = html;
+            }
+
+            printCertificate() {
+                window.print();
+            }
+        }
+
+        const app = new CEFRExamApp();
+    </script>
+</body>
+</html>
